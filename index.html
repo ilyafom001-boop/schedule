@@ -60,8 +60,8 @@
         tg.expand(); // Разворачиваем на весь экран
 
         // 2. Инициализация Supabase (ЗАМЕНИТЕ ЭТИ ССЫЛКИ НА СВОИ!)
-        const SUPABASE_URL = 'sb_publishable_9STQ6woKuhPQOMS5odKOLA_08_JjT4_';
-        const SUPABASE_KEY = 'sb_secret_TtSU598q2CYy-sZZT86N3g_18Vv8L2V';
+        const SUPABASE_URL = 'https://jevgivrorbovlmidxexc.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impldmdpd3JvcmJvdmxtaWR4ZXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM3MTQ5NTEsImV4cCI6MjEwOTI5MDk1MX0.VbyxFmnTCqOLX3ve42rRqQGw9m_FBCA8_K9Pp50_gTQ';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // Получаем ID пользователя Telegram (если открыто вне тг, ставим тестовый ID)
