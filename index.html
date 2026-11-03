@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Мое Расписание</title>
+    <!-- Библиотека Telegram -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Библиотека Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--tg-theme-bg-color, #f0f2f5);
+            color: var(--tg-theme-text-color, #000000);
+            padding: 16px;
+            margin: 0;
+        }
+        .container { max-width: 600px; margin: 0 auto; }
+        h1 { font-size: 22px; text-align: center; }
+        .add-box { display: flex; gap: 8px; margin-bottom: 16px; }
+        input {
+            flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #ccc;
+            background: var(--tg-theme-secondary-bg-color, #fff); color: inherit;
+        }
+        button {
+            padding: 10px 16px; border-radius: 8px; border: none;
+            background: var(--tg-theme-button-color, #4a90e2);
+            color: var(--tg-theme-button-text-color, #fff);
+            font-weight: bold; cursor: pointer;
+        }
+        ul { list-style: none; padding: 0; margin: 0; }
+        li {
+            background: var(--tg-theme-secondary-bg-color, #fff);
+            padding: 12px; border-radius: 8px; margin-bottom: 8px;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .delete-btn { background: transparent; color: #e74c3c; padding: 4px 8px; }
+        .status { text-align: center; font-size: 12px; color: gray; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📅 Расписание</h1>
+        <div class="status" id="status">Загрузка данных...</div>
+        
+        <div class="add-box">
+            <input type="text" id="lessonInput" placeholder="Название пары / время...">
+            <button onclick="addLesson()">+</button>
+        </div>
+        
+        <ul id="scheduleList"></ul>
+    </div>
+
+    <script>
+        // 1. Инициализация Telegram
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand(); // Разворачиваем на весь экран
+
+        // 2. Инициализация Supabase (ЗАМЕНИТЕ ЭТИ ССЫЛКИ НА СВОИ!)
+        const SUPABASE_URL = 'sb_publishable_9STQ6woKuhPQOMS5odKOLA_08_JjT4_';
+        const SUPABASE_KEY = 'sb_secret_TtSU598q2CYy-sZZT86N3g_18Vv8L2V';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // Получаем ID пользователя Telegram (если открыто вне тг, ставим тестовый ID)
+        const userId = tg.initDataUnsafe?.user?.id?.toString() || "test_user";
+
+        let scheduleData = [];
+        const listElement = document.getElementById('scheduleList');
+        const statusElement = document.getElementById('status');
+        const inputElement = document.getElementById('lessonInput');
+
+        // 3. Загрузка данных из базы при старте
+        async function loadSchedule() {
+            const { data, error } = await supabase
+                .from('schedules')
+                .select('content')
+                .eq('user_id', userId)
+                .single();
+
+            if (error && error.code !== 'PGRST116') { // Игнорируем ошибку, если записи еще нет
+                console.error(error);
+                statusElement.innerText = "Ошибка загрузки";
+                return;
+            }
+
+            if (data && data.content) {
+                scheduleData = data.content;
+            }
+            statusElement.innerText = "Данные синхронизированы ☁️";
+            renderList();
+        }
+
+        // 4. Сохранение данных в базу
+        async function saveSchedule() {
+            statusElement.innerText = "Сохранение...";
+            const { error } = await supabase
+                .from('schedules')
+                .upsert({ 
+                    user_id: userId, 
+                    content: scheduleData,
+                    updated_at: new Date()
+                }, { onConflict: 'user_id' }); // Обновляем, если запись уже есть
+
+            if (error) {
+                console.error(error);
+                statusElement.innerText = "Ошибка сохранения ❌";
+            } else {
+                statusElement.innerText = "Сохранено в облако ✅";
+            }
+        }
+
+        // 5. Отрисовка списка
+        function renderList() {
+            listElement.innerHTML = '';
+            scheduleData.forEach((item, index) => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span>${item}</span>
+                    <button class="delete-btn" onclick="deleteLesson(${index})">✕</button>
+                `;
+                listElement.appendChild(li);
+            });
+        }
+
+        // 6. Добавление
+        function addLesson() {
+            const text = inputElement.value.trim();
+            if (!text) return;
+            scheduleData.push(text);
+            inputElement.value = '';
+            renderList();
+            saveSchedule(); // Отправляем в базу
+        }
+
+        // 7. Удаление
+        function deleteLesson(index) {
+            scheduleData.splice(index, 1);
+            renderList();
+            saveSchedule(); // Отправляем в базу
+        }
+
+        inputElement.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') addLesson();
+        });
+
+        // Запуск
+        loadSchedule();
+    </script>
+</body>
+</html>
